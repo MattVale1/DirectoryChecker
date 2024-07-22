@@ -4,9 +4,11 @@ namespace DirectoryChecker {
 
     public partial class DCWindow : Form {
 
-        private Dictionary<string, long> selectedFolders = new();
-        private IOrderedEnumerable<KeyValuePair<string, long>> sortedDictionary;
+        private readonly Dictionary<string, long> selectedFolders = [];
+        private IOrderedEnumerable<KeyValuePair<string, long>>? sortedDictionary;
 
+
+        #region Init
         public DCWindow() {
             InitializeComponent();
         }
@@ -14,7 +16,9 @@ namespace DirectoryChecker {
         private void Form1_Load(object sender, EventArgs e) {
             Label_Results.Text = "Your Directories and associated file size will appear listed here.";
         }
+        #endregion
 
+        #region User Input
         private void OpenFileDialogBox() {
             using var dialog = new CommonOpenFileDialog {
                 IsFolderPicker = true,
@@ -26,24 +30,26 @@ namespace DirectoryChecker {
                 }
             }
         }
+        #endregion
 
-        #region DICTIONARY
+        #region Directory Handling
         private void CalculateDirectorySize() {
-            if (selectedFolders.Count == 0)
-                return;
             foreach (KeyValuePair<string, long> folder in selectedFolders) {
                 long size = GetDirectorySize(folder.Key);
                 selectedFolders[folder.Key] = size;
             }
         }
+
         private static long GetDirectorySize(string targetPath) {
-            DirectoryInfo dirInfo = new DirectoryInfo(targetPath);
+            DirectoryInfo dirInfo = new(targetPath);
             var dirSize = Task.Run(() => dirInfo.EnumerateFiles("*", SearchOption.AllDirectories).Sum(file => file.Length)).Result;
             return dirSize;
         }
+
         private void SortDictionary() {
             sortedDictionary = from entry in selectedFolders orderby entry.Value descending select entry;
         }
+
         private void DisplayResults() {
             foreach (var item in sortedDictionary) {
                 Label_Results.Text += "\n" + ConvertBytesToMegabytes(item.Value).ToString("F2") + " MB :: " + item.Key;
@@ -51,11 +57,11 @@ namespace DirectoryChecker {
         }
         #endregion
 
-        #region CONVERTING BYTES
-        private double ConvertBytesToMegabytes(long bytes) { return (bytes / 1024f) / 1024f; }
+        #region Byte Conversion
+        private static double ConvertBytesToMegabytes(long bytes) { return (bytes / 1024f) / 1024f; }
         #endregion
 
-        #region BUTTONS
+        #region Button Handlers
         private void Btn_SelectFolders_Click(object sender, EventArgs e) {
             selectedFolders.Clear();
             OpenFileDialogBox();
@@ -63,6 +69,12 @@ namespace DirectoryChecker {
 
         private void Btn_CalculateSize_Click(object sender, EventArgs e) {
             Label_Results.Text = "";
+
+            if (selectedFolders == null || selectedFolders.Count == 0) {
+                Label_Results.Text = "No folders selected.";
+                return;
+            }
+
             CalculateDirectorySize();
             SortDictionary();
             DisplayResults();
